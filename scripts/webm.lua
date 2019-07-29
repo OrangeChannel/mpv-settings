@@ -8,15 +8,21 @@ local options = {
 	keybind = "W",
 	-- If empty, saves on the same directory of the playing video.
 	-- A starting "~" will be replaced by the home dir.
-	output_directory = "",
+	-- This field is delimited by double-square-brackets - [[ and ]] - instead of
+	-- quotes, because Windows users might run into a issue when using
+	-- backslashes as a path separator. Examples of valid inputs for this field
+	-- would be: [[]] (the default, empty value), [[C:\Users\John]] (on Windows),
+	-- and [[/home/john]] (on Unix-like systems eg. Linux).
+	output_directory = [[]],
 	run_detached = false,
 	-- Template string for the output file
 	-- %f - Filename, with extension
 	-- %F - Filename, without extension
 	-- %T - Media title, if it exists, or filename, with extension (useful for some streams, such as YouTube).
 	-- %s, %e - Start and end time, with milliseconds
-	-- %S, %E - Start and time, without milliseconds
+	-- %S, %E - Start and end time, without milliseconds
 	-- %M - "-audio", if audio is enabled, empty otherwise
+	-- %R - "-(height)p", where height is the video's height, or scale_height, if it's enabled.
 	output_template = "%F-[%s-%e]%M",
 	-- Scale video to a certain height, keeping the aspect ratio. -1 disables it.
 	scale_height = -1,
@@ -24,20 +30,20 @@ local options = {
 	-- used on the encode. If this is set to <= 0, the video bitrate will be set
 	-- to 0, which might enable constant quality modes, depending on the
 	-- video codec that's used (VP8 and VP9, for example).
-	target_filesize = 8000,
+	target_filesize = 2500,
 	-- If true, will use stricter flags to ensure the resulting file doesn't
 	-- overshoot the target filesize. Not recommended, as constrained quality
 	-- mode should work well, unless you're really having trouble hitting
 	-- the target size.
-	strict_filesize_constraint = true,
-	strict_bitrate_multiplier = 0.98,
+	strict_filesize_constraint = false,
+	strict_bitrate_multiplier = 0.95,
 	-- In kilobits.
-	strict_audio_bitrate = 56,
+	strict_audio_bitrate = 64,
 	-- Sets the output format, from a few predefined ones.
 	-- Currently we have webm-vp8 (libvpx/libvorbis), webm-vp9 (libvpx-vp9/libvorbis)
 	-- and raw (rawvideo/pcm_s16le).
-	output_format = "mp4",
-	twopass = true,
+	output_format = "webm-vp8",
+	twopass = false,
 	-- If set, applies the video filters currently used on the playback to the encode.
 	apply_current_filters = true,
 	-- If set, writes the video's filename to the "Title" field on the metadata.
@@ -52,9 +58,9 @@ local options = {
 	-- On Windows, it shows a cmd popup. "auto" will display progress on non-Windows platforms.
 	display_progress = "auto",
 	-- The font size used in the menu. Isn't used for the notifications (started encode, finished encode etc)
-	font_size = 24,
+	font_size = 28,
 	margin = 10,
-	message_duration = 2.5
+	message_duration = 5
 }
 
 mpopts.read_options(options)
@@ -99,9 +105,8 @@ seconds_to_path_element = function(seconds, no_ms, full)
 end
 local file_exists
 file_exists = function(name)
-  local f = io.open(name, "r")
-  if f ~= nil then
-    io.close(f)
+  local info, err = utils.file_info(name)
+  if info ~= nil then
     return true
   end
   return false
@@ -116,7 +121,8 @@ format_filename = function(startTime, endTime, videoFormat)
     ["%%e"] = seconds_to_path_element(endTime),
     ["%%E"] = seconds_to_path_element(endTime, true),
     ["%%T"] = mp.get_property("media-title"),
-    ["%%M"] = (mp.get_property_native('aid') and not mp.get_property_native('mute')) and '-audio' or ''
+    ["%%M"] = (mp.get_property_native('aid') and not mp.get_property_native('mute')) and '-audio' or '',
+    ["%%R"] = (options.scale_height ~= -1) and "-" .. tostring(options.scale_height) .. "p" or "-" .. tostring(mp.get_property_native('height')) .. "p"
   }
   local filename = options.output_template
   for format, value in pairs(replaceTable) do
@@ -699,13 +705,57 @@ do
   MP4 = _class_0
 end
 formats["mp4"] = MP4()
+local MP4NVENC
+do
+  local _class_0
+  local _parent_0 = Format
+  local _base_0 = { }
+  _base_0.__index = _base_0
+  setmetatable(_base_0, _parent_0.__base)
+  _class_0 = setmetatable({
+    __init = function(self)
+      self.displayName = "MP4 (h264-NVENC/AAC)"
+      self.supportsTwopass = true
+      self.videoCodec = "h264_nvenc"
+      self.audioCodec = "aac"
+      self.outputExtension = "mp4"
+      self.acceptsBitrate = true
+    end,
+    __base = _base_0,
+    __name = "MP4NVENC",
+    __parent = _parent_0
+  }, {
+    __index = function(cls, name)
+      local val = rawget(_base_0, name)
+      if val == nil then
+        local parent = rawget(cls, "__parent")
+        if parent then
+          return parent[name]
+        end
+      else
+        return val
+      end
+    end,
+    __call = function(cls, ...)
+      local _self_0 = setmetatable({}, _base_0)
+      cls.__init(_self_0, ...)
+      return _self_0
+    end
+  })
+  _base_0.__class = _class_0
+  if _parent_0.__inherited then
+    _parent_0.__inherited(_parent_0, _class_0)
+  end
+  MP4NVENC = _class_0
+end
+formats["mp4-nvenc"] = MP4NVENC()
 local Page
 do
   local _class_0
   local _base_0 = {
     add_keybinds = function(self)
       if not self.keybinds then
-        return
+        return 
       end
       for key, func in pairs(self.keybinds) do
         mp.add_forced_key_binding(key, key, func, {
@@ -715,7 +765,7 @@ do
     end,
     remove_keybinds = function(self)
       if not self.keybinds then
-        return
+        return 
       end
       for key, _ in pairs(self.keybinds) do
         mp.remove_key_binding(key)
@@ -778,6 +828,7 @@ do
     setup_text = function(self, ass)
       local scale = calculate_scale_factor()
       local margin = options.margin * scale
+      ass:append("{\\an7}")
       ass:pos(margin, margin)
       return ass:append("{\\fs" .. tostring(options.font_size * scale) .. "}")
     end
@@ -817,7 +868,7 @@ do
       local matchTime = string.match(line, "Encode time[-]pos: ([0-9.]+)")
       local matchExit = string.match(line, "Exiting... [(]([%a ]+)[)]")
       if matchTime == nil and matchExit == nil then
-        return
+        return 
       end
       if matchTime ~= nil and tonumber(matchTime) > self.currentTime then
         self.currentTime = tonumber(matchTime)
@@ -908,6 +959,27 @@ get_active_tracks = function()
   end
   return active
 end
+local append_track
+append_track = function(out, track)
+  local external_flag = {
+    ["audio"] = "audio-file",
+    ["sub"] = "sub-file"
+  }
+  local internal_flag = {
+    ["video"] = "vid",
+    ["audio"] = "aid",
+    ["sub"] = "sid"
+  }
+  if track['external'] then
+    return append(out, {
+      "--" .. tostring(external_flag[track['type']]) .. "=" .. tostring(track['external-filename'])
+    })
+  else
+    return append(out, {
+      "--" .. tostring(internal_flag[track['type']]) .. "=" .. tostring(track['id'])
+    })
+  end
+end
 local get_scale_filters
 get_scale_filters = function()
   if options.scale_height > 0 then
@@ -948,12 +1020,18 @@ get_playback_options = function()
   append_property(ret, "sub-auto")
   append_property(ret, "sub-delay")
   append_property(ret, "video-rotate")
-  for _, track in ipairs(mp.get_property_native("track-list")) do
-    if track["type"] == "sub" and track["external"] then
-      append(ret, {
-        "--sub-files-append=" .. tostring(track['external-filename'])
-      })
-    end
+  return ret
+end
+local get_speed_flags
+get_speed_flags = function()
+  local ret = { }
+  local speed = mp.get_property_native("speed")
+  if speed ~= 1 then
+    append(ret, {
+      "--vf-add=setpts=PTS/" .. tostring(speed),
+      "--af-add=atempo=" .. tostring(speed),
+      "--sub-speed=1/" .. tostring(speed)
+    })
   end
   return ret
 end
@@ -998,7 +1076,7 @@ encode = function(region, startTime, endTime)
   local path = mp.get_property("path")
   if not path then
     message("No file is being played")
-    return
+    return 
   end
   local is_stream = not file_exists(path)
   local command = {
@@ -1010,24 +1088,42 @@ encode = function(region, startTime, endTime)
     "--oac=" .. tostring(format.audioCodec),
     "--loop-file=no"
   }
-  local vid = -1
-  local aid = -1
-  local sid = -1
+  local track_types_added = {
+    ["video"] = false,
+    ["audio"] = false,
+    ["sub"] = false
+  }
   for _, track in ipairs(get_active_tracks()) do
-    local _exp_0 = track["type"]
-    if "video" == _exp_0 then
-      vid = track['id']
-    elseif "audio" == _exp_0 then
-      aid = track['id']
-    elseif "sub" == _exp_0 then
-      sid = track['id']
+    append_track(command, track)
+    track_types_added[track['type']] = true
+  end
+  for track_type, was_added in pairs(track_types_added) do
+    local _continue_0 = false
+    repeat
+      if was_added then
+        _continue_0 = true
+        break
+      end
+      local _exp_0 = track_type
+      if "video" == _exp_0 then
+        append(command, {
+          "--vid=no"
+        })
+      elseif "audio" == _exp_0 then
+        append(command, {
+          "--aid=no"
+        })
+      elseif "sub" == _exp_0 then
+        append(command, {
+          "--sid=no"
+        })
+      end
+      _continue_0 = true
+    until true
+    if not _continue_0 then
+      break
     end
   end
-  append(command, {
-    "--vid=" .. (vid >= 0 and tostring(vid) or "no"),
-    "--aid=" .. (aid >= 0 and tostring(aid) or "no"),
-    "--sid=" .. (sid >= 0 and tostring(sid) or "no")
-  })
   append(command, get_playback_options())
   local filters = { }
   append(filters, format:getPreFilters())
@@ -1047,6 +1143,7 @@ encode = function(region, startTime, endTime)
       "--vf-add=" .. tostring(f)
     })
   end
+  append(command, get_speed_flags())
   append(command, format:getFlags())
   if options.write_filename_on_metadata then
     append(command, get_metadata_flags())
@@ -1055,7 +1152,7 @@ encode = function(region, startTime, endTime)
     local dT = endTime - startTime
     if options.strict_filesize_constraint then
       local video_kilobits = options.target_filesize * 8
-      if aid >= 0 then
+      if track_types_added["audio"] then
         video_kilobits = video_kilobits - dT * options.strict_audio_bitrate
         append(command, {
           "--oacopts-add=b=" .. tostring(options.strict_audio_bitrate) .. "k"
@@ -1112,7 +1209,7 @@ encode = function(region, startTime, endTime)
     })
     if not res then
       message("First pass failed! Check the logs for details.")
-      return
+      return 
     end
     append(command, {
       "--ovcopts-add=flags=+pass2"
@@ -1211,6 +1308,7 @@ do
       region:set_from_points(self.pointA:to_screen(), self.pointB:to_screen())
       local d = get_video_dimensions()
       ass:new_event()
+      ass:append("{\\an7}")
       ass:pos(0, 0)
       ass:append('{\\bord0}')
       ass:append('{\\shad0}')
@@ -1573,6 +1671,7 @@ do
         "webm-vp8",
         "webm-vp9",
         "mp4",
+        "mp4-nvenc",
         "raw"
       }
       local formatOpts = {
@@ -1888,15 +1987,15 @@ do
       self:hide()
       if self.startTime < 0 then
         message("No start time, aborting")
-        return
+        return 
       end
       if self.endTime < 0 then
         message("No end time, aborting")
-        return
+        return 
       end
       if self.startTime >= self.endTime then
         message("Start time is ahead of end time, aborting")
-        return
+        return 
       end
       return encode(self.region, self.startTime, self.endTime)
     end

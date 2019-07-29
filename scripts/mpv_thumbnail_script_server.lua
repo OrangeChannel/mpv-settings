@@ -425,12 +425,12 @@ local thumbnailer_options = {
     -----------------------
 
     -- The maximum dimensions of the thumbnails (pixels)
-    thumbnail_width = 300,
-    thumbnail_height = 300,
+    thumbnail_width = 200,
+    thumbnail_height = 200,
 
     -- The thumbnail count target
     -- (This will result in a thumbnail every ~10 seconds for a 25 minute video)
-    thumbnail_count = 100,
+    thumbnail_count = 150,
 
     -- The above target count will be adjusted by the minimum and
     -- maximum time difference between thumbnails.

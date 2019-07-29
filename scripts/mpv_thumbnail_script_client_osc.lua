@@ -703,7 +703,7 @@ local thumbnailer_options = {
     -- Explicitly disable subtitles on the mpv sub-calls
     mpv_no_sub = false,
     -- Add a "--no-config" to the mpv sub-call arguments
-    mpv_no_config = true,
+    mpv_no_config = false,
     -- Add a "--profile=<mpv_profile>" to the mpv sub-call arguments
     -- Use "" to disable
     mpv_profile = "",
@@ -757,12 +757,12 @@ local thumbnailer_options = {
     -----------------------
 
     -- The maximum dimensions of the thumbnails (pixels)
-    thumbnail_width = 300,
-    thumbnail_height = 300,
+    thumbnail_width = 200,
+    thumbnail_height = 200,
 
     -- The thumbnail count target
     -- (This will result in a thumbnail every ~10 seconds for a 25 minute video)
-    thumbnail_count = 180,
+    thumbnail_count = 150,
 
     -- The above target count will be adjusted by the minimum and
     -- maximum time difference between thumbnails.
@@ -772,9 +772,9 @@ local thumbnailer_options = {
     -- In other words, thumbnails will be:
     --   at least min_delta seconds apart (limiting the amount)
     --   at most max_delta seconds apart (raising the amount if needed)
-    min_delta = 2,
+    min_delta = 5,
     -- 120 seconds aka 2 minutes will add more thumbnails when the video is over 5 hours!
-    max_delta = 60,
+    max_delta = 90,
 
 
     -- Overrides for remote urls (you generally want less thumbnails!)
