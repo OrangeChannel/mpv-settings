@@ -731,10 +731,10 @@ local thumbnailer_options = {
     --   topbar:       0, 10, 10, 10
     --   bottombar:   10,  0, 10, 10
     --   slimbox/box: 10, 10, 10, 10
-    pad_top   = 10,
+    pad_top   = 5,
     pad_bot   =  0,
-    pad_left  = 10,
-    pad_right = 10,
+    pad_left  = 5,
+    pad_right = 5,
 
     -- If true, pad values are screen-pixels. If false, video-pixels.
     pad_in_screenspace = true,
@@ -744,7 +744,7 @@ local thumbnailer_options = {
     -- Background color in BBGGRR
     background_color = "000000",
     -- Alpha: 0 - fully opaque, 255 - transparent
-    background_alpha = 80,
+    background_alpha = 127,
 
     -- Keep thumbnail on the screen near left or right side
     constrain_to_screen = true,
@@ -757,8 +757,8 @@ local thumbnailer_options = {
     -----------------------
 
     -- The maximum dimensions of the thumbnails (pixels)
-    thumbnail_width = 200,
-    thumbnail_height = 200,
+    thumbnail_width = 320,
+    thumbnail_height = 320,
 
     -- The thumbnail count target
     -- (This will result in a thumbnail every ~10 seconds for a 25 minute video)
@@ -772,9 +772,9 @@ local thumbnailer_options = {
     -- In other words, thumbnails will be:
     --   at least min_delta seconds apart (limiting the amount)
     --   at most max_delta seconds apart (raising the amount if needed)
-    min_delta = 5,
+    min_delta = 3,
     -- 120 seconds aka 2 minutes will add more thumbnails when the video is over 5 hours!
-    max_delta = 90,
+    max_delta = 120,
 
 
     -- Overrides for remote urls (you generally want less thumbnails!)
@@ -783,9 +783,9 @@ local thumbnailer_options = {
     -- Allow thumbnailing network paths (naive check for "://")
     thumbnail_network = false,
     -- Override thumbnail count, min/max delta
-    remote_thumbnail_count = 60,
-    remote_min_delta = 15,
-    remote_max_delta = 120,
+    remote_thumbnail_count = 50,
+    remote_min_delta = 10,
+    remote_max_delta = 600,
 
     -- Try to grab the raw stream and disable ytdl for the mpv subcalls
     -- Much faster than passing the url to ytdl again, but may cause problems with some sites
